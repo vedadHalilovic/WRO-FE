@@ -1,6 +1,6 @@
 #include <dummy.h>
 HardwareSerial mySerial(2);  // UART2
-
+//lib za uart HardwareSerial.h
 // ===== Pin Definitions =====
 const int pwma = 13;   // Drive motor PWM
 const int ain1 = 22; //zamijenjeni pnovi radi smjera
@@ -15,7 +15,7 @@ int driveSpeed = 200;
 int steerSpeed = 200;
 
 void setup() {
-  mySerial.begin(9600, SERIAL_8N1, 27, 14); 
+  mySerial.begin(9600, SERIAL_8N1, 27, 14); //16RX 17TX
   pinMode(pwma, OUTPUT);
   pinMode(ain1, OUTPUT);
   pinMode(ain2, OUTPUT);
