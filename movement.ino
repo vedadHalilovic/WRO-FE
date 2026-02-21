@@ -1,4 +1,5 @@
 #include <dummy.h>
+HardwareSerial mySerial(2);  // UART2
 
 // ===== Pin Definitions =====
 const int pwma = 13;   // Drive motor PWM
@@ -10,11 +11,11 @@ const int bin1 = 26;
 const int bin2 = 25;
 
 // ===== Speed Settings (0–255 za ESP32 standardni analogWrite) =====
-// Napomena: Na ESP32 analogWrite radi do 255 osim ako nije drugačije definisano
-int driveSpeed = 150; 
-int steerSpeed = 150;
+int driveSpeed = 200; 
+int steerSpeed = 200;
 
 void setup() {
+  mySerial.begin(9600, SERIAL_8N1, 27, 14); 
   pinMode(pwma, OUTPUT);
   pinMode(ain1, OUTPUT);
   pinMode(ain2, OUTPUT);
@@ -31,44 +32,24 @@ void setup() {
   stopAll();
 }
 
+
+int dataInt;
+String data;
 void loop() {
-  // 1️⃣ Pravo naprijed
-  Serial.println(">> KRETANJE: Naprijed - Steer: Pravo");
-  driveForward();
-  steerStraight();
-  delay(1000);
-  
-  stopAll();
-  delay(1000);
+  if (mySerial.available()) {
+   data = mySerial.readStringUntil('\n');  
+}
 
-  // 2️⃣ Naprijed i Lijevo
-  Serial.println(">> KRETANJE: Naprijed - Steer: LIJEVO");
-  driveForward();
-  steerLeft();
-  delay(1000);
-  
-  stopAll();
-  delay(1000);
-
-  // 3️⃣ Naprijed i Desno
-  Serial.println(">> KRETANJE: Naprijed - Steer: DESNO");
-  driveForward();
-  steerRight();
-  delay(1000);
-
-  stopAll();
-  delay(1000);
-
-  // 4️⃣ Nazad pravo
-  Serial.println(">> KRETANJE: Nazad - Steer: Pravo");
-  driveBackward();
-  steerStraight();
-  delay(1000);
-
-  // Kraj programa
-  stopAll();
-  Serial.println("--- Program zavrsen ---");
-  
+  dataInt = data.toInt();
+  while(dataInt >85 && dataInt<95 ) driveForward();
+  while(dataInt <85 && dataInt != 0) {
+    steerRight();
+    driveForward();
+  }
+  while(dataInt >95) {
+    steerLeft();
+    driveForward();
+  }
 }
 
 // ===== Drive Motor Functions (Motor A) =====
