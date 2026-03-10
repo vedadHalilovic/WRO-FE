@@ -1,103 +1,140 @@
-#include <dummy.h>
-HardwareSerial mySerial(2);  // UART2
-//lib za uart HardwareSerial.h
+#include <Arduino.h>
+#include <SoftwareSerial.h>
+
+#define RX_PIN 27
+#define TX_PIN 14
+
+SoftwareSerial mySerial(RX_PIN, TX_PIN);  // RX, TX
+
 // ===== Pin Definitions =====
-const int pwma = 13;   // Drive motor PWM
-const int ain1 = 22; //zamijenjeni pnovi radi smjera
+const int pwma = 13;
+const int ain1 = 22;
 const int ain2 = 12;
 
-const int pwmb = 33;  // Steering motor PWM
+const int pwmb = 33;
 const int bin1 = 26;
 const int bin2 = 25;
 
-// ===== Speed Settings (0–255 za ESP32 standardni analogWrite) =====
-int driveSpeed = 200; 
+// ===== PWM Settings =====
+const int pwmFreq = 1000;
+const int pwmResolution = 8;
+
+int driveSpeed = 150;
 int steerSpeed = 200;
 
+int dataInt = 0;
+
+void driveForward();
+void steerLeft();
+void steerRight();
+void steerStraight();
+void stopAll();
+void controlCar(int value);
+
 void setup() {
-  mySerial.begin(9600, SERIAL_8N1, 27, 14); //16RX 17TX
-  pinMode(pwma, OUTPUT);
+
+  Serial.begin(115200);       
+  delay(1000);
+  Serial.println("ESP32 Ready (9600)");
+
+  mySerial.begin(9600);      
+
   pinMode(ain1, OUTPUT);
   pinMode(ain2, OUTPUT);
-
-  pinMode(pwmb, OUTPUT);
   pinMode(bin1, OUTPUT);
   pinMode(bin2, OUTPUT);
 
-  // Pokretanje Serial komunikacije
-  Serial.begin(115200); 
-  delay(1000); // Kratka pauza da se Serial stabilizuje
-  Serial.println("--- Sistem pokrenut: ESP32 spreman ---");
-  
+  ledcAttach(pwma, pwmFreq, pwmResolution);
+  ledcAttach(pwmb, pwmFreq, pwmResolution);
+
   stopAll();
 }
 
-
-int dataInt;
-String data;
 void loop() {
+
   if (mySerial.available()) {
-   data = mySerial.readStringUntil('\n');  
+
+    String data = mySerial.readStringUntil('\n');
+    if(!isDigit(data[0])){
+      if(data == "l"){
+        driveForward();
+        steerLeft();
+        delay(2000);
+        steerStraight()
+        stopAll()
+        data = "";
+      }
+      else if(data == "r"){
+        driveForward();
+        steerRight();
+        delay(2000);
+        steerStraight()
+        stopAll()
+        data = "";
+      }
+    }
+    data.trim();
+    dataInt = data.toInt();
+
+    Serial.print("Received: ");
+    
+    Serial.println(dataInt);
+
+    controlCar(dataInt);
+  }
 }
 
-  dataInt = data.toInt();
-  while(dataInt >85 && dataInt<95 ) driveForward();
-  while(dataInt <85 && dataInt != 0) {
+// ================= CONTROL =================
+void controlCar(int value) {
+
+  if (value == 0) {
+    stopAll();
+    return;
+  }
+
+  value = constrain(value, 0, 180);
+
+  if (value > 85 && value < 95) {
+    steerStraight();
+  }
+  else if (value <= 85) {
     steerRight();
-    driveForward();
   }
-  while(dataInt >95) {
+  else {
     steerLeft();
-    driveForward();
   }
+
+  driveForward();
 }
 
-// ===== Drive Motor Functions (Motor A) =====
 void driveForward() {
-  Serial.print("Drive Motor: FORWARD (AIN1: HIGH, AIN2: LOW) | Speed: ");
-  Serial.println(driveSpeed);
   digitalWrite(ain1, HIGH);
   digitalWrite(ain2, LOW);
-  analogWrite(pwma, driveSpeed);
+  ledcWrite(pwma, driveSpeed);
 }
 
-void driveBackward() {
-  Serial.print("Drive Motor: BACKWARD (AIN1: LOW, AIN2: HIGH) | Speed: ");
-  Serial.println(driveSpeed);
-  digitalWrite(ain1, LOW);
-  digitalWrite(ain2, HIGH);
-  analogWrite(pwma, driveSpeed);
-}
-
-// ===== Steering Motor Functions (Motor B) =====
 void steerLeft() {
-  Serial.print("Steer Motor: LEFT (BIN1: HIGH, BIN2: LOW) | Speed: ");
-  Serial.println(steerSpeed);
   digitalWrite(bin1, HIGH);
   digitalWrite(bin2, LOW);
-  analogWrite(pwmb, steerSpeed);
+  ledcWrite(pwmb, steerSpeed);
 }
 
 void steerRight() {
-  Serial.print("Steer Motor: RIGHT (BIN1: LOW, BIN2: HIGH) | Speed: ");
-  Serial.println(steerSpeed);
   digitalWrite(bin1, LOW);
   digitalWrite(bin2, HIGH);
-  analogWrite(pwmb, steerSpeed);
+  ledcWrite(pwmb, steerSpeed);
 }
 
 void steerStraight() {
-  Serial.println("Steer Motor: STRAIGHT (OFF)");
-  analogWrite(pwmb, 0);
   digitalWrite(bin1, LOW);
   digitalWrite(bin2, LOW);
+  ledcWrite(pwmb, 0);
 }
 
-// ===== Stop Everything =====
 void stopAll() {
-  Serial.println("!!! STOP ALL MOTORS !!!");
-  analogWrite(pwma, 0);
-  analogWrite(pwmb, 0);
+  ledcWrite(pwma, 0);
+  ledcWrite(pwmb, 0);
+
   digitalWrite(ain1, LOW);
   digitalWrite(ain2, LOW);
   digitalWrite(bin1, LOW);
