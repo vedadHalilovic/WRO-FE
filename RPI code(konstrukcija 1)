@@ -43,11 +43,11 @@ while turnl==False and turnr==False:
         sumr = 0
         countr = 0
         for (_, angle, distance) in scan:
-            if angle > 255 and angle < 285:
+            if angle > 255 and angle < 285: #od 240 do 270 - ismar
                 suml += distance
                 countl+=1
                 
-            if angle > 75 and angle < 105:
+            if angle > 75 and angle < 105: #od 90 do 120 - ismar
                 sumr += distance
                 countr+=1
         avgr = sumr / countr
@@ -72,10 +72,10 @@ if turnl == True:
             sumr = 0
             countr = 0
             for (_, angle, distance) in scan:
-                if angle > 255 and angle < 285:
+                if angle > 255 and angle < 285: #line 46 - ismar
                     suml += distance
                     countl+=1
-                if angle > 75 and angle < 105:
+                if angle > 75 and angle < 105: #line 50 - ismar
                     sumr += distance
                     countr+=1
             avgl = suml / countl
@@ -97,10 +97,10 @@ else :
             sumr = 0
             countr = 0
             for (_, angle, distance) in scan:
-                if angle > 255 and angle < 285:
+                if angle > 255 and angle < 285: #line 46 - ismar
                     suml += distance
                     countl+=1
-                if angle > 75 and angle < 105:
+                if angle > 75 and angle < 105: #line 50 - ismar
                     sumr += distance
                     countr+=1
             avgl = suml / countl
