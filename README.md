@@ -1,4 +1,4 @@
-##WRO-FE
+## WRO-FE
 
 ### **1.1 Team overview**
 
