@@ -68,12 +68,12 @@ Electronic components that were needed are as follows:
 
 ### **2.4** **Mechanical design**
 
-- **Base/lower deck:** PETG 3D printed with honeycomb pattern for weight savings.
+- **Base/lower deck:** solid PETG 3D printed part.
 - **Top deck:** PETG 3D printed with honeycomb pattern for weight savings, attached to lower deck using four 3D printed pillars.
 - **Camera mount:** 3D printed beam attached to the top deck using adhesive, camera is pointed down at a 15-degree angle for more accurate readings with less ambient light interference.
 - **Cooling system:** heatsinks on RPI and buck converter.
-- **Fasteners:** M3 bolts with corresponding nuts.
-- **Drivetrain:** connected to drive wheels using ⌀4mm D-shaped axle(shaft) with a 3D printed spur gear (module 1, 14 teeth) with the same being connected to the motor with a 28 teeth module 1 spur gear. Driveshaft side movement limited using ⌀4mm shaft collars.
+- **Fasteners:** M3 and M4 bolts with corresponding nuts.
+- **Drivetrain:** connected to drive wheels using ⌀4mm D-shaped axle(shaft) with a 3D printed spur gear (module 2, 10 teeth) with the same being connected to the motor with a 14 teeth module 2 spur gear. Driveshaft side movement limited using ⌀4mm shaft collars.
 - **Steering system:** Steering system uses a combination of 3D printed parts and pre-made aluminium profiles as well as Lego spur gears. Axles are 3D printed, servo is connected to one of the gears, multiple gears are used as to clear the LIDAR. Everything is mounted using M3, M4 bolts and 4mm shaft collars.
 
 ### **2.5 Electrical design**
