@@ -41,7 +41,7 @@ The robot's uniqueness lies in it's guidance system, where it uses LIDAR for dri
 - LIDAR detects walls so the robot stays centerlined and detects an incoming turn.
 - RPI generates navigation data in degrees and sends it to the ESP32 and ensures that the robot completes 3 laps and stops in the right spot.
 - ESP steers the car according to the data from RPI to keep the robot centerlined and when needed initiate a 90-degree turn
-- ICM-20948 tracks the yaw and ensures that the robot turned 90 degrees left or right.
+- MPU6050 tracks the yaw and ensures that the robot turned 90 degrees left or right.
 
 ### **Challenge 2-obstacle course**
 
@@ -67,6 +67,7 @@ Electronic components that were needed are as follows:
 | Pi camera           | Detecting the obstacle colour                                                                                              | Raspberry Pi Camera Module 2                                              | Mounted to the top deck                                                                     |
 
 ### **2.4** **Mechanical design**
+ <img width="1412" height="800" alt="iso_front_view" src="https://github.com/user-attachments/assets/13b30602-29bc-4528-8e35-c11de4f81768" />
 
 - **Base/lower deck:** solid PETG 3D printed part.
 - **Top deck:** PETG 3D printed with honeycomb pattern for weight savings, attached to lower deck using four 3D printed pillars.
@@ -126,7 +127,7 @@ Motor speed is controlled via a PWM signal from the ESP32 to the driver's PWMA p
 - &lt;Arduino.h&gt; - used to enable Arduino API
 - &lt;ESP32Servo.h&gt; - used for servo control
 - &lt;Wire.h&gt; - enables I2C communication
-- &lt;Adafruit_ICM20948.h&gt; - used for interacting with/controlling the gyro
+- &lt;Adafruit_MPU6050.h&gt; - used for interacting with/controlling the gyro
 
 **Libraries (RPI):**
 
