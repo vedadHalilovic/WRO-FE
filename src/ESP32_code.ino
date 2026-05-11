@@ -1,10 +1,10 @@
 #include <Arduino.h>
 #include <ESP32Servo.h>
 #include <Wire.h>
-#include <Adafruit_MPU6050.h> // Changed from ICM20948
+#include <Adafruit_MPU6050.h> 
 #include <Adafruit_Sensor.h>
 
-// ===== Hardware Setup =====
+//Hardware Setup 
 HardwareSerial mySerial(2); 
 Servo steeringServo;
 Adafruit_MPU6050 mpu; // Changed to MPU6050 object
@@ -14,7 +14,7 @@ const int ain1 = 25;
 const int ain2 = 12;
 
 int driveSpeed = 100;
-// ===== IMU Variables =====
+//MPU variables
 unsigned long lastTime;
 float yaw = 0;
 float gyroBiasZ = 0;
@@ -44,12 +44,12 @@ void setup() {
   steeringServo.write(105); // Center
 
   // MPU6050 Initialization
-  if (!mpu.begin()) { // Standard MPU6050 address is usually 0x68
+  if (!mpu.begin()) { // 0x68
     Serial.println("MPU6050 error!");
     //while (1) delay(10);
   }
 
-  // Setup MPU settings (optional but recommended for stability)
+  // Setup MPU settings
   mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
   mpu.setGyroRange(MPU6050_RANGE_500_DEG);
   mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
@@ -115,7 +115,7 @@ void updateYaw() {
   // Convert Rad/s to Deg/s and apply bias
   float gz = (g.gyro.z - gyroBiasZ) * 180.0 / PI;
   
-  // Small noise filter
+  //Noise filter
   if (abs(gz) < 0.1) gz = 0;
 
   yaw += gz * dt;
