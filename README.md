@@ -67,7 +67,10 @@ Electronic components that were needed are as follows:
 | Pi camera           | Detecting the obstacle colour                                                                                              | Raspberry Pi Camera Module 2                                              | Mounted to the top deck                                                                     |
 
 ### **2.4** **Mechanical design**
- <img width="1412" height="800" alt="iso_front_view" src="https://github.com/user-attachments/assets/13b30602-29bc-4528-8e35-c11de4f81768" />
+<p align = "center">
+  <img width="700" height = "400" alt="iso_front_view" src="https://github.com/user-attachments/assets/13b30602-29bc-4528-8e35-c11de4f81768"  />
+</p>
+
 
 - **Base/lower deck:** solid PETG 3D printed part.
 - **Top deck:** PETG 3D printed with honeycomb pattern for weight savings, attached to lower deck using four 3D printed pillars.
