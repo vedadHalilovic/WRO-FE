@@ -1,162 +1,155 @@
 #include <Arduino.h>
 #include <ESP32Servo.h>
 #include <Wire.h>
-#include <Adafruit_ICM20X.h>
-#include <Adafruit_ICM20948.h>
+#include <Adafruit_MPU6050.h> // Changed from ICM20948
+#include <Adafruit_Sensor.h>
 
 // ===== Hardware Setup =====
-HardwareSerial mySerial(2); // UART2: RX=16, TX=17
+HardwareSerial mySerial(2); 
 Servo steeringServo;
-Adafruit_ICM20948 icm;
+Adafruit_MPU6050 mpu; // Changed to MPU6050 object
 
 const int pwma = 13;
 const int ain1 = 25;
 const int ain2 = 12;
 
-// PWM Settings
-//const int pwmFreq = 1000;
-//const int pwmResolution = 8;
-int driveSpeed = 100;  // Speed during normal driving
-//int turnSpeed = 160;   // Slightly slower for better turning accuracy
-
-// ===== IMU / Navigation Variables =====
+int driveSpeed = 100;
+// ===== IMU Variables =====
 unsigned long lastTime;
 float yaw = 0;
 float gyroBiasZ = 0;
 bool isTurning = false;
 float targetYaw = 0;
-int turnDirection = 0; // 1 for Right, -1 for Left
+int turnDirection = 0; 
+
+void stopAll();
+void driveForward(int speed);
+void updateYaw();
+void startTurn();
+void checkTurnProgress();
 
 void setup() {
   delay(1000);
-  Serial.begin(115200);
-  mySerial.begin(115200, SERIAL_8N1, 27, 14);
+  Serial.begin(115200); 
   
+  // RPi Communication
+  mySerial.begin(9600, SERIAL_8N1, 27, 14);
+
   steeringServo.attach(33);
   pinMode(ain1, OUTPUT);
   pinMode(ain2, OUTPUT);
-  pinMode(pwma,OUTPUT);
- // ledcAttach(pwma, pwmFreq, pwmResolution);
+  pinMode(pwma, OUTPUT); 
+
   stopAll();
-  steeringServo.write(120);
+  steeringServo.write(105); // Center
 
-  // Initialize IMU
-  if (!icm.begin_I2C(0x68)) {
-    Serial.println("Failed to find ICM20948 chip!");
-    while (1) delay(10);
+  // MPU6050 Initialization
+  if (!mpu.begin()) { // Standard MPU6050 address is usually 0x68
+    Serial.println("MPU6050 error!");
+    //while (1) delay(10);
   }
 
-  // --- CALIBRATION ---
-  Serial.println("Calibrating Gyro... DO NOT MOVE");
-  for (int i = 0; i < 1000; i++) {
-    sensors_event_t accel, gyro, mag, temp;
-    icm.getEvent(&accel, &gyro, &mag, &temp);
-    gyroBiasZ += gyro.gyro.z;
-    delay(5);
+  // Setup MPU settings (optional but recommended for stability)
+  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+
+  // Calibration
+  int samples = 750;
+  for (int i = 0; i < samples; i++) {
+    sensors_event_t a, g, temp;
+    mpu.getEvent(&a, &g, &temp);
+    gyroBiasZ += g.gyro.z;
+    delay(2);
   }
-  gyroBiasZ /= 200.0;
+  gyroBiasZ /= (float)samples;
   
   lastTime = micros();
-  Serial.println("Ready!");
+  Serial.println("MPU6050 Ready at 9600 baud!");
 }
 
 void loop() {
   updateYaw();
-  delay(1);
-  if (mySerial.available() && !isTurning) {
+
+  if (mySerial.available() > 0 && !isTurning) {
     String data = mySerial.readStringUntil('\n');
     data.trim();
 
-    if (data == "l") {
-      targetYaw = 90;
-      turnDirection = 1;
-      startTurn();
-    } 
-    else if (data == "r") {
-      targetYaw = -90.0;
-      turnDirection = -1;
-      startTurn();
-    } 
-    else if (data.length() > 0) {
-      // Normal Steering Mode 
-      int angle = data.toInt();
-      steeringServo.write(angle);
-      driveForward(driveSpeed);
+    if (data.length() > 0) {
+      if (data == "l") {
+        targetYaw = 90;
+        turnDirection = 1;
+        startTurn();
+      } 
+      else if (data == "r") {
+        targetYaw = -90.0;
+        turnDirection = -1;
+        startTurn();
+      } 
+      else if(data == "e"){
+        stopAll();
+      }
+      else {
+        int incomingAngle = data.toInt();
+        int servoAngle = map(incomingAngle, -90, 90, 30, 180);
+        Serial.println(servoAngle);
+        steeringServo.write(servoAngle);
+        driveForward(driveSpeed);
+      }
     }
   }
 
-  // 3. Monitor Turn Progress
   if (isTurning) {
     checkTurnProgress();
   }
 }
 
-// ================= NAVIGATION FUNCTIONS =================
-
 void updateYaw() {
-  sensors_event_t accel, gyro, mag, temp;
-  icm.getEvent(&accel, &gyro, &mag, &temp);
-
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+  
   unsigned long currentTime = micros();
   float dt = (currentTime - lastTime) / 1000000.0;
   lastTime = currentTime;
 
-  float gz = (gyro.gyro.z - gyroBiasZ) * 180.0 / PI;
+  // Convert Rad/s to Deg/s and apply bias
+  float gz = (g.gyro.z - gyroBiasZ) * 180.0 / PI;
   
-  if (abs(gz) < 0.005) gz = 0;
+  // Small noise filter
+  if (abs(gz) < 0.1) gz = 0;
+
   yaw += gz * dt;
-  Serial.println(yaw);
 }
 
 void startTurn() {
   isTurning = true;
-  
-  if (turnDirection == 1) {
-    steeringServo.write(30); // Hard Right
-  } else {
-    steeringServo.write(180);  // Hard Left
-  }
-  
-  driveForward(driveSpeed);
+  driveForward(driveSpeed - 20);
+  if (turnDirection == 1) steeringServo.write(30);
+  else if (turnDirection == -1) steeringServo.write(180);
 }
 
 void checkTurnProgress() {
   bool turnComplete = false;
-  float tolerance = 2.0; // Stop 2 degrees early to account for coasting momentum
-
-  if (turnDirection == 1) { // Right Turn
-    if (yaw >= (targetYaw - tolerance)) {
-      turnComplete = true;
-    }
-  } 
-  else if (turnDirection == -1) { // Left Turn
-    if (yaw <= (targetYaw + tolerance)) {
-      turnComplete = true;
-    }
-  }
+  if (turnDirection == 1 && yaw >= (targetYaw - 3.0)) turnComplete = true;
+  else if (turnDirection == -1 && yaw <= (targetYaw + 3.0)) turnComplete = true;
 
   if (turnComplete) {
-    stopAll();
-    steeringServo.write(120); // Straighten wheels
+    steeringServo.write(130);
     isTurning = false;
-    
-    Serial.print("Turn Complete. Final Yaw: "); Serial.println(yaw);
-    
     yaw = 0; 
-    Serial.println("Yaw reset to 0 for next operation.");
+    turnDirection = 0;
+    mySerial.println("h");
   }
 }
 
-// ================= MOTOR CONTROL =================
-
 void driveForward(int speed) {
-  digitalWrite(ain1, HIGH);
-  digitalWrite(ain2, LOW);
-  ledcWrite(pwma, speed);
+  digitalWrite(ain1, LOW);
+  digitalWrite(ain2, HIGH);
+  analogWrite(pwma, speed);
 }
 
 void stopAll() {
-  ledcWrite(pwma, 0);
+  analogWrite(pwma, 0);
   digitalWrite(ain1, LOW);
   digitalWrite(ain2, LOW);
 }
