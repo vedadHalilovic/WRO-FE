@@ -94,7 +94,7 @@ Buttons provide a way to initiate our programs without accessing the RPI remotel
 
  **2.5.3 Motor driver**  
  
-Adafruit dual H-bridge TB-6612 motor driver was chosen because it best fit our use case, with it being compact, supporting up to 1.2A on 5-13V DC.  
+Adafruit dual H-bridge TB-6612 motor driver was chosen because it best fit our use case, with it being compact, supporting up to 1.2A continuous on 5-13V DC.  
 It controls the motor movement direction by applying 5V to AIN1 or AIN2.  
 Motor speed is controlled via a PWM signal from the ESP32 to the driver's PWMA pin.
 
