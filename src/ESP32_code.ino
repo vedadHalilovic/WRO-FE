@@ -1,26 +1,28 @@
 #include <Arduino.h>
 #include <ESP32Servo.h>
 #include <Wire.h>
-#include <Adafruit_MPU6050.h> 
-#include <Adafruit_Sensor.h>
+#include <MPU6050_tockn.h>
+#include <cmath>
 
-//Hardware Setup 
-HardwareSerial mySerial(2); 
+HardwareSerial mySerial(2);
 Servo steeringServo;
-Adafruit_MPU6050 mpu; // Changed to MPU6050 object
+MPU6050 mpu(Wire);
 
+const int ledGreen = 2;
+const int button_start = 15;
 const int pwma = 13;
 const int ain1 = 25;
 const int ain2 = 12;
 
-int driveSpeed = 100;
-//MPU variables
-unsigned long lastTime;
+const double k = 0.33;
+const double minL = 76.0;
+const double minR = 114.0;
+
+int driveSpeed = 130;
 float yaw = 0;
-float gyroBiasZ = 0;
 bool isTurning = false;
 float targetYaw = 0;
-int turnDirection = 0; 
+int turnDirection = 0;
 
 void stopAll();
 void driveForward(int speed);
@@ -29,43 +31,37 @@ void startTurn();
 void checkTurnProgress();
 
 void setup() {
+  digitalWrite(ledGreen, LOW);
+  pinMode(button_start, INPUT_PULLUP);
+
+  while(button_start == HIGH){
+    digitalWrite(ledGreen, HIGH);
+    delay(500);
+    digitalWrite(ledGreen, LOW);
+    delay(500);
+  }
   delay(1000);
-  Serial.begin(115200); 
-  
-  // RPi Communication
+  Serial.begin(115200);
+
   mySerial.begin(9600, SERIAL_8N1, 27, 14);
+
+  Wire.begin(21, 22);
+  mpu.begin();
+
+  Serial.println("Calibrating... Do not move robot!");
+  mpu.calcGyroOffsets(true);
 
   steeringServo.attach(33);
   pinMode(ain1, OUTPUT);
   pinMode(ain2, OUTPUT);
-  pinMode(pwma, OUTPUT); 
+  pinMode(pwma, OUTPUT);
+  pinMode(ledGreen, OUTPUT);
 
   stopAll();
-  steeringServo.write(105); // Center
-
-  // MPU6050 Initialization
-  if (!mpu.begin()) { // 0x68
-    Serial.println("MPU6050 error!");
-    //while (1) delay(10);
-  }
-
-  // Setup MPU settings
-  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
-  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
-  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
-
-  // Calibration
-  int samples = 750;
-  for (int i = 0; i < samples; i++) {
-    sensors_event_t a, g, temp;
-    mpu.getEvent(&a, &g, &temp);
-    gyroBiasZ += g.gyro.z;
-    delay(2);
-  }
-  gyroBiasZ /= (float)samples;
-  
-  lastTime = micros();
-  Serial.println("MPU6050 Ready at 9600 baud!");
+  steeringServo.write(96);
+  Serial.println("MPU Ready and Calibrated!");
+  digitalWrite(ledGreen, HIGH);
+  mySerial.println("a");
 }
 
 void loop() {
@@ -77,22 +73,30 @@ void loop() {
 
     if (data.length() > 0) {
       if (data == "l") {
-        targetYaw = 90;
+        targetYaw = yaw - 90.0;
         turnDirection = 1;
         startTurn();
-      } 
-      else if (data == "r") {
-        targetYaw = -90.0;
+      } else if (data == "r") {
+        targetYaw = yaw + 90.0;
         turnDirection = -1;
         startTurn();
-      } 
-      else if(data == "e"){
+      } else if (data == "n") {
+        targetYaw = yaw - 45.0;
+        turnDirection = 1;
+        startTurn();
+      } else if (data == "m") {
+        targetYaw = yaw + 45.0;
+        turnDirection = -1;
+        startTurn();
+      } else if (data == "t") {
         stopAll();
-      }
-      else {
+        delay(1100);
+      } else if (data == "e") {
+        delay(500);
+        stopAll();
+      } else {
         int incomingAngle = data.toInt();
-        int servoAngle = map(incomingAngle, -90, 90, 30, 180);
-        Serial.println(servoAngle);
+        int servoAngle = map(incomingAngle, -90, 90, 40, 150);
         steeringServo.write(servoAngle);
         driveForward(driveSpeed);
       }
@@ -105,40 +109,52 @@ void loop() {
 }
 
 void updateYaw() {
-  sensors_event_t a, g, temp;
-  mpu.getEvent(&a, &g, &temp);
-  
-  unsigned long currentTime = micros();
-  float dt = (currentTime - lastTime) / 1000000.0;
-  lastTime = currentTime;
+  mpu.update();
+  yaw = mpu.getGyroAngleZ();
 
-  // Convert Rad/s to Deg/s and apply bias
-  float gz = (g.gyro.z - gyroBiasZ) * 180.0 / PI;
-  
-  //Noise filter
-  if (abs(gz) < 0.1) gz = 0;
-
-  yaw += gz * dt;
+  static float lastPrintedYaw = 0;
+  if (abs(yaw - lastPrintedYaw) > 0.5) {
+    Serial.print("Current Yaw: ");
+    Serial.println(yaw);
+    lastPrintedYaw = yaw;
+  }
 }
 
 void startTurn() {
   isTurning = true;
-  driveForward(driveSpeed - 20);
-  if (turnDirection == 1) steeringServo.write(30);
-  else if (turnDirection == -1) steeringServo.write(180);
+  driveForward(driveSpeed - 35);
+  if (turnDirection == 1) steeringServo.write(40);
+  else if (turnDirection == -1) steeringServo.write(150);
 }
 
 void checkTurnProgress() {
   bool turnComplete = false;
-  if (turnDirection == 1 && yaw >= (targetYaw - 3.0)) turnComplete = true;
-  else if (turnDirection == -1 && yaw <= (targetYaw + 3.0)) turnComplete = true;
+
+  if (turnDirection == 1) {
+    if (yaw > targetYaw) {
+      int turnAngle = round(minL - (k * (yaw - targetYaw)));
+      steeringServo.write(constrain(turnAngle, 40, 80));
+    } else {
+      turnComplete = true;
+    }
+  } else if (turnDirection == -1) {
+    if (yaw < targetYaw) {
+      int turnAngle = round(minR - (k * (yaw - targetYaw)));
+      steeringServo.write(constrain(turnAngle, 110, 150));
+    } else {
+      turnComplete = true;
+    }
+  }
 
   if (turnComplete) {
-    steeringServo.write(130);
+    //turnCount++;
+    steeringServo.write(96);
     isTurning = false;
-    yaw = 0; 
+    delay(500);
     turnDirection = 0;
     mySerial.println("h");
+    stopAll();
+    delay(1000);
   }
 }
 
